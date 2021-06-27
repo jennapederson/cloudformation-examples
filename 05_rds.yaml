@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Part 1 - Build a webapp stack with CloudFormation
+Description: Part 2 - Add a database with CloudFormation
 
 Parameters:
   AvailabilityZone:
@@ -93,8 +93,6 @@ Resources:
     Type: AWS::RDS::DBInstance
     Properties:
       DBInstanceIdentifier: !Ref DBInstanceIdentifier
-      # VPCSecurityGroups:
-      # - !GetAtt DBEC2SecurityGroup.GroupId
       AllocatedStorage: '5'
       DBInstanceClass: db.t2.small
       Engine: postgres
@@ -114,3 +112,7 @@ Outputs:
   WebServerPublicDNS:
     Description: 'Public DNS of EC2 instance'
     Value: !GetAtt WebAppInstance.PublicDnsName
+
+  WebAppDatabaseEndpoint:
+    Description: 'Connection endpoint for the database'
+    Value: !GetAtt WebAppDatabase.Endpoint.Address
