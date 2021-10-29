@@ -34,7 +34,7 @@ Parameters:
     Default: 'postgres'
   DBPassword:
     NoEcho: 'true'
-    Description: Password Postgresql database access
+    Description: Password for Postgresql database access
     Type: String
     MinLength: '8'
     MaxLength: '41'
