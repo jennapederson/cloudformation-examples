@@ -8,7 +8,9 @@ This repository contains CloudFormation example templates, each building on the 
 - Make the Template Dynamic
 - Add RDS Postgresql Database
 - Enable Inbound Traffic on Port 5432
-- Delete Your Stack & Snapshots
+- Add CodeDeploy agent, tags, and CodeDeployTrustRole
+- Create CodePipeline
+- Delete Your Stacks & Snapshots
 
 This repository accompanies the following blog posts:
 - [Provisioning an EC2 Instance with CloudFormation (part 1)](https://jennapederson.com/blog/2021/6/21/provisioning-an-ec2-instance-with-cloudformation-part-1/)
@@ -65,7 +67,7 @@ ParameterKey=EnvironmentType,ParameterValue=dev \
 ParameterKey=KeyPairName,ParameterValue=jenna \
 ParameterKey=DBPassword,ParameterValue=Abcd1234
 
-## 7. Delete Your Stack & Snapshots
+## 7. Delete Your Stacks & Snapshots
 
 Don’t forget to delete your stack so you don’t accrue charges. You can do that with the `delete-stack` command:
 
