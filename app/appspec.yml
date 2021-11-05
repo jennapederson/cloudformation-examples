@@ -1,0 +1,10 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /tmp/
+hooks:
+  AfterInstall:
+    - location: bin/hello_world
+      timeout: 100
+      runas: root
