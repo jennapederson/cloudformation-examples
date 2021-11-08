@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo pm2 start ‘npm start’
+pm2 start 'npm start' -n app

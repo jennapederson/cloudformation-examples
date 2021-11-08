@@ -1,2 +1,2 @@
 #!/bin/bash
-PKILL node
+pm2 stop app
