@@ -1,15 +1,22 @@
 version: 0.2
 
 phases:
-  # install:
-  #   runtime-versions:
-  #     java: corretto11
+  install:
+   runtime-versions:
+     nodejs: 12
+   commands:
+     - echo "Setting up node"
   pre_build:
-    commands:
-      - echo This is the pre-build phase.
+   commands:
+    - echo "Installing dependencies"
+     - npm install
   build:
     commands:
-      - echo Build started on `date`
+      - echo "Building app/running tests"
+      # - npm test
   post_build:
     commands:
-      - echo Build completed on `date`
+      - echo "Build completed"
+artifacts:
+  files:
+    - '**/*'
