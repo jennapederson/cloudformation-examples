@@ -2,22 +2,34 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Part 3 - Setup a CodePipeline with CloudFormation
 
 Parameters:
-  AvailabilityZone:
-    Type: AWS::EC2::AvailabilityZone::Name
-
   GitHubRepo:
     Type: String
+    Default: sample-express-app
 
   GitHubBranch:
     Type: String
-    Default: master
-
-  GitHubToken:
-    Type: String
-    NoEcho: true
+    Default: main
 
   GitHubUser:
     Type: String
+    Default: jennapederson
+
+  CodeDeployServiceRole:
+    Type: String
+    Description: A service role ARN granting CodeDeploy permission to make calls to EC2 instances with CodeDeploy agent installed.
+
+  TagKey:
+    Description: The EC2 tag key that identifies this as a target for deployments.
+    Type: String
+    Default: CodeDeployTag
+    AllowedPattern: '[\x20-\x7E]*'
+    ConstraintDescription: Can contain only ASCII characters.
+  TagValue:
+    Description: The EC2 tag value that identifies this as a target for deployments.
+    Type: String
+    Default: CodeDeployDemo
+    AllowedPattern: '[\x20-\x7E]*'
+    ConstraintDescription: Can contain only ASCII characters.
 
 Resources:
 
@@ -46,21 +58,6 @@ Resources:
                       - ecr:GetAuthorizationToken
                       - ssm:GetParameters
                   Resource: "*"
-        # - PolicyName: "ecr"
-        #   PolicyDocument:
-        #     Version: "2012-10-17"
-        #     Statement:
-        #         -
-        #           Effect: "Allow"
-        #           Action:
-        #               - ecr:GetDownloadUrlForLayer
-        #               - ecr:BatchGetImage
-        #               - ecr:BatchCheckLayerAvailability
-        #               - ecr:PutImage
-        #               - ecr:InitiateLayerUpload
-        #               - ecr:UploadLayerPart
-        #               - ecr:CompleteLayerUpload
-        #           Resource: !Sub arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${Repository}
         - PolicyName: "S3"
           PolicyDocument:
             Version: "2012-10-17"
@@ -94,38 +91,41 @@ Resources:
                   - !Sub arn:aws:s3:::${ArtifactBucket}
                 Effect: Allow
                 Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                  - s3:GetObjectVersion
-                  - s3:GetBucketVersioning
+                  - s3:*
+                  # - s3:GetObject
+                  # - s3:GetObjectVersion
+                  # - s3:GetBucketVersioning
               - Resource: "*"
                 Effect: Allow
                 Action:
                   - codebuild:StartBuild
                   - codebuild:BatchGetBuilds
                   - iam:PassRole
-              # - Resource: !Sub 'arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:retaildemostore-src'
-              #   Effect: Allow
-              #   Action:
-              #     - "codecommit:GetBranch"
-              #     - "codecommit:GetCommit"
-              #     - "codecommit:UploadArchive"
-              #     - "codecommit:GetUploadArchiveStatus"
-              #     - "codecommit:CancelUploadArchive"
-              # - Resource: '*'
-              #   Effect: Allow
-              #   Action:
-              #     - ecs:List*
-              #     - ecs:Describe*
-              #     - ecs:RegisterTaskDefinition
-              # - Resource: !Sub 'arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:service/${ClusterName}/${FargateServiceName}'
-              #   Effect: Allow
-              #   Action:
-              #     - ecs:UpdateService
+              - Resource:
+                  - !Ref CodeStarConnection
+                Effect: Allow
+                Action:
+                  - codestar-connections:UseConnection
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codedeploy:CreateDeployment
+                  - codedeploy:CreateDeploymentGroup
+                  - codedeploy:GetApplication
+                  - codedeploy:GetApplicationRevision
+                  - codedeploy:GetDeployment
+                  - codedeploy:GetDeploymentConfig
+                  - codedeploy:RegisterApplicationRevision
 
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
+
+  CodeStarConnection:
+    Type: 'AWS::CodeStarConnections::Connection'
+    Properties:
+      ConnectionName: CfnExamplesGitHubConnection
+      ProviderType: GitHub
 
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -134,13 +134,34 @@ Resources:
         Type: CODEPIPELINE
       Source:
         Type: CODEPIPELINE
-        BuildSpec: app/buildspec.yml
+        BuildSpec: buildspec.yml
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/docker:17.09.0
         Type: LINUX_CONTAINER
       Name: !Ref AWS::StackName
       ServiceRole: !Ref CodeBuildServiceRole
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+
+  CodeDeployGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref CodeDeployApplication
+      # Deployment:
+      #   IgnoreApplicationStopFailures: true
+      #   Revision:
+      #     RevisionType: S3
+      #     S3Location:
+      #       Bucket: !Ref ArtifactBucket
+      #       BundleType: Zip
+      #       Key: 'BuildOutput.zip'
+      Ec2TagFilters:
+        - Key: !Ref 'TagKey'
+          Value: !Ref 'TagValue'
+          Type: KEY_AND_VALUE
+      ServiceRoleArn: !Ref 'CodeDeployServiceRole'
 
   PipelineGitHub:
     Type: AWS::CodePipeline::Pipeline
@@ -155,16 +176,15 @@ Resources:
             - Name: App
               ActionTypeId:
                 Category: Source
-                Owner: ThirdParty
+                Owner: AWS
                 Version: '1'
-                Provider: GitHub
+                Provider: CodeStarSourceConnection
               Configuration:
-                Owner: !Ref GitHubUser
-                Repo: !Ref GitHubRepo
-                Branch: !Ref GitHubBranch
-                OAuthToken: !Ref GitHubToken
+                ConnectionArn: !Ref CodeStarConnection
+                BranchName: !Ref GitHubBranch
+                FullRepositoryId: !Sub ${GitHubUser}/${GitHubRepo}
               OutputArtifacts:
-                - Name: App
+                - Name: AppArtifact
               RunOrder: 1
         - Name: Build
           Actions:
@@ -177,25 +197,24 @@ Resources:
               Configuration:
                 ProjectName: !Ref CodeBuildProject
               InputArtifacts:
-                - Name: App
+                - Name: AppArtifact
               OutputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
-        # - Name: Deploy
-        #   Actions:
-        #     - Name: Deploy
-        #       ActionTypeId:
-        #         Category: Deploy
-        #         Owner: AWS
-        #         Version: '1'
-        #         Provider: ECS
-        #       Configuration:
-        #         ClusterName: !Ref ClusterName
-        #         ServiceName: !Ref FargateServiceName
-        #         FileName: images.json
-        #       InputArtifacts:
-        #         - Name: BuildOutput
-        #       RunOrder: 1
+        - Name: Deploy
+          Actions:
+            - Name: Deploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref CodeDeployApplication
+                DeploymentGroupName: !Ref CodeDeployGroup
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
 
 Outputs:
   PipelineForGitHubUrl:
