@@ -115,41 +115,42 @@ Resources:
           Value: !Ref 'TagValue'
       IamInstanceProfile: !Ref 'InstanceRoleInstanceProfile'
 
-  InstanceRole:
-    Type: AWS::IAM::Role
+  WaitHandle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  WaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
     Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
+      Count: 1
+      Handle: !Ref 'WaitHandle'
+      Timeout: '900'
 
-  InstanceRolePolicies:
-    Type: AWS::IAM::Policy
+  WebAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      PolicyName: InstanceRole
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Action:
-              - autoscaling:Describe*
-              - cloudformation:Describe*
-              - cloudformation:GetTemplate
-              - s3:Get*
-            Resource: '*'
-      Roles:
-        - !Ref 'InstanceRole'
+      GroupName: !Join [ '-', [ webapp-security-group, !Ref EnvironmentType ] ]
+      GroupDescription: 'Allow HTTP/HTTPS and SSH inbound and outbound traffic'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
 
-  InstanceRoleInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
+  WebAppEIP:
+    Type: AWS::EC2::EIP
     Properties:
-      Path: /
-      Roles:
-        - !Ref 'InstanceRole'
+      Domain: vpc
+      InstanceId: !Ref WebAppInstance
+      Tags:
+        - Key: Name
+          Value: !Join [ '-', [ webapp-eip, !Ref EnvironmentType ] ]
 
   CodeDeployTrustRole:
     Type: AWS::IAM::Role
@@ -188,74 +189,73 @@ Resources:
       Roles:
         - !Ref 'CodeDeployTrustRole'
 
-  WaitHandle:
-    Type: AWS::CloudFormation::WaitConditionHandle
-  WaitCondition:
-    Type: AWS::CloudFormation::WaitCondition
+  InstanceRole:
+    Type: AWS::IAM::Role
     Properties:
-      Count: 1
-      Handle: !Ref 'WaitHandle'
-      Timeout: '900'
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
 
-  WebAppSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  InstanceRolePolicies:
+    Type: AWS::IAM::Policy
     Properties:
-      GroupName: !Join [ '-', [ webapp-security-group, !Ref EnvironmentType ] ]
-      GroupDescription: 'Allow HTTP/HTTPS and SSH inbound and outbound traffic'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
+      PolicyName: InstanceRole
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - autoscaling:Describe*
+              - cloudformation:Describe*
+              - cloudformation:GetTemplate
+              - s3:Get*
+            Resource: '*'
+      Roles:
+        - !Ref 'InstanceRole'
 
-  WebAppEIP:
-    Type: AWS::EC2::EIP
+  InstanceRoleInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
     Properties:
-      Domain: vpc
-      InstanceId: !Ref WebAppInstance
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ webapp-eip, !Ref EnvironmentType ] ]
+      Path: /
+      Roles:
+        - !Ref 'InstanceRole'
 
-  WebAppDatabase:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBInstanceIdentifier: !Ref DBInstanceIdentifier
-      VPCSecurityGroups:
-      - !GetAtt DBEC2SecurityGroup.GroupId
-      AllocatedStorage: '5'
-      DBInstanceClass: db.t3.micro
-      Engine: postgres
-      MasterUsername: !Ref DBUsername
-      MasterUserPassword: !Ref DBPassword
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ webapp-rds, !Ref EnvironmentType ] ]
-    DeletionPolicy: Snapshot
-    UpdateReplacePolicy: Snapshot
+  # WebAppDatabase:
+  #   Type: AWS::RDS::DBInstance
+  #   Properties:
+  #     DBInstanceIdentifier: !Ref DBInstanceIdentifier
+  #     VPCSecurityGroups:
+  #     - !GetAtt DBEC2SecurityGroup.GroupId
+  #     AllocatedStorage: '5'
+  #     DBInstanceClass: db.t3.micro
+  #     Engine: postgres
+  #     MasterUsername: !Ref DBUsername
+  #     MasterUserPassword: !Ref DBPassword
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Join [ '-', [ webapp-rds, !Ref EnvironmentType ] ]
+  #   DeletionPolicy: Snapshot
+  #   UpdateReplacePolicy: Snapshot
 
-  DBEC2SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Join [ '-', [ webapp-db-security-group, !Ref EnvironmentType ] ]
-      GroupDescription: Allow postgres inbound traffic
-      SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 5432
-        ToPort: 5432
-        SourceSecurityGroupName:
-          Ref: WebAppSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Join [ '-', [ webapp-db-security-group, !Ref EnvironmentType ] ]
+  # DBEC2SecurityGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupName: !Join [ '-', [ webapp-db-security-group, !Ref EnvironmentType ] ]
+  #     GroupDescription: Allow postgres inbound traffic
+  #     SecurityGroupIngress:
+  #     - IpProtocol: tcp
+  #       FromPort: 5432
+  #       ToPort: 5432
+  #       SourceSecurityGroupName:
+  #         Ref: WebAppSecurityGroup
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Join [ '-', [ webapp-db-security-group, !Ref EnvironmentType ] ]
 
 Outputs:
   WebsiteURL:
@@ -266,9 +266,9 @@ Outputs:
     Description: 'Public DNS of EC2 instance'
     Value: !GetAtt WebAppInstance.PublicDnsName
 
-  WebAppDatabaseEndpoint:
-    Description: 'Connection endpoint for the database'
-    Value: !GetAtt WebAppDatabase.Endpoint.Address
+  # WebAppDatabaseEndpoint:
+  #   Description: 'Connection endpoint for the database'
+  #   Value: !GetAtt WebAppDatabase.Endpoint.Address
 
   CodeDeployTrustRoleARN:
     Value: !GetAtt 'CodeDeployTrustRole.Arn'
