@@ -94,7 +94,7 @@ Resources:
     Properties:
       DBInstanceIdentifier: !Ref DBInstanceIdentifier
       AllocatedStorage: '5'
-      DBInstanceClass: db.t2.small
+      DBInstanceClass: db.t3.micro
       Engine: postgres
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword

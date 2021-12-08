@@ -15,6 +15,7 @@ This repository contains CloudFormation example templates, each building on the 
 This repository accompanies the following blog posts:
 - [Provisioning an EC2 Instance with CloudFormation (part 1)](https://jennapederson.com/blog/2021/6/21/provisioning-an-ec2-instance-with-cloudformation-part-1/)
 - [Provisioning an RDS Database with CloudFormation (part 2)](https://jennapederson.com/blog/2021/6/28/provisioning-an-rds-database-with-cloudformation-part-2/)
+- [Using CloudFormation to Automate Build, Test, and Deploy with CodePipeline (part 3)](https://jennapederson.com/blog/2021/11/26/using-cloudformation-to-automate-build-test-deploy-with-codepipeline-part-3/)
 
 ## 1. Create Basic Amazon EC2 Instance
 
