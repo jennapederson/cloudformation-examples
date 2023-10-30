@@ -62,11 +62,13 @@ ParameterKey=DBPassword,ParameterValue=Abcd1234
 
 You can update the stack with this command, passing in the parameter values:
 
+```bash
 $ aws cloudformation update-stack --stack-name ec2-rds-example --template-body file://06_rds.yaml \
 --parameters ParameterKey=AvailabilityZone,ParameterValue=us-east-1a \
 ParameterKey=EnvironmentType,ParameterValue=dev \
 ParameterKey=KeyPairName,ParameterValue=jenna \
 ParameterKey=DBPassword,ParameterValue=Abcd1234
+```
 
 ## 7. Delete Your Stacks & Snapshots
 
